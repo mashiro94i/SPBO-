@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SPBO — f(x, y, z) 科目／學生迴圈</title>
+  <style>
+    :root {
+      --bg-page: #ffffff;
+      --ink: #000000;
+      --slate: #5d6371;
+      --charcoal: #2e2e2e;
+      --paper: #ffffff;
+      --shadow: rgba(0, 0, 0, 0.18);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", "Microsoft JhengHei", system-ui, sans-serif;
+      background: var(--bg-page);
+      color: var(--ink);
+    }
+
+    .page {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 1.75rem 1.25rem 2.5rem;
+    }
+
+    .page-head {
+      margin-bottom: 1.5rem;
+    }
+
+    .page-head h1 {
+      margin: 0 0 0.35rem;
+      font-size: clamp(1.35rem, 3vw, 1.85rem);
+      font-weight: 700;
+      color: var(--ink);
+      letter-spacing: 0.02em;
+    }
+
+    .page-head .lead {
+      margin: 0;
+      font-size: 0.95rem;
+      color: #333;
+      line-height: 1.55;
+      max-width: 52rem;
+    }
+
+    .decor {
+      position: relative;
+    }
+
+    .decor::before,
+    .decor::after {
+      content: "✦";
+      position: absolute;
+      top: -0.2rem;
+      font-size: 0.75rem;
+      color: #bbb;
+      opacity: 0.9;
+    }
+
+    .decor::before {
+      left: -0.1rem;
+    }
+
+    .decor::after {
+      right: -0.1rem;
+    }
+
+    /* 橫向主流程 */
+    .h-flow {
+      display: flex;
+      align-items: stretch;
+      gap: 0;
+      overflow-x: auto;
+      padding-bottom: 0.75rem;
+      margin-bottom: 1.25rem;
+      scroll-snap-type: x proximity;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .h-flow::-webkit-scrollbar {
+      height: 8px;
+    }
+
+    .h-flow::-webkit-scrollbar-thumb {
+      background: #c9cdd4;
+      border-radius: 4px;
+    }
+
+    .h-step {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 0;
+      scroll-snap-align: start;
+    }
+
+    .h-arrow {
+      flex: 0 0 auto;
+      width: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #9ca3af;
+    }
+
+    .h-arrow svg {
+      width: 22px;
+      height: 14px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+    }
+
+    .tile {
+      width: min(200px, 42vw);
+      min-height: 112px;
+      padding: 0.85rem 0.95rem;
+      border-radius: 8px;
+      background: var(--slate);
+      color: #fff;
+      box-shadow: 4px 4px 0 var(--shadow);
+      transition: opacity 0.35s ease, transform 0.35s ease, box-shadow 0.25s ease;
+    }
+
+    .tile .t-tag {
+      font-size: 0.62rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      opacity: 0.85;
+      margin-bottom: 0.35rem;
+    }
+
+    .tile .t-title {
+      font-size: 0.92rem;
+      font-weight: 600;
+      line-height: 1.35;
+    }
+
+    .tile .t-sub {
+      margin-top: 0.4rem;
+      font-size: 0.72rem;
+      opacity: 0.88;
+      line-height: 1.4;
+    }
+
+    .tile.dim {
+      opacity: 0.38;
+      transform: scale(0.97);
+      box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.08);
+    }
+
+    .tile.on {
+      opacity: 1;
+      transform: scale(1);
+      box-shadow: 6px 6px 0 var(--shadow);
+      outline: 2px solid rgba(255, 255, 255, 0.35);
+    }
+
+    .subjects-row {
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 1rem;
+      justify-content: flex-start;
+      align-items: stretch;
+      margin-bottom: 1rem;
+      overflow-x: auto;
+      padding: 0.25rem 0;
+    }
+
+    .subj-card {
+      flex: 1 1 0;
+      min-width: 160px;
+      max-width: 280px;
+      padding: 0.9rem 1rem;
+      border-radius: 8px;
+      background: var(--slate);
+      color: #fff;
+      box-shadow: 4px 4px 0 var(--shadow);
+      transition: opacity 0.3s, transform 0.3s, box-shadow 0.25s;
+    }
+
+    .subj-card.dim {
+      opacity: 0.4;
+      transform: scale(0.98);
+    }
+
+    .subj-card.on {
+      outline: 2px solid rgba(255, 255, 255, 0.4);
+      box-shadow: 6px 6px 0 var(--shadow);
+    }
+
+    .subj-card .lab {
+      font-size: 0.65rem;
+      letter-spacing: 0.12em;
+      opacity: 0.85;
+    }
+
+    .subj-card .sym {
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin-top: 0.25rem;
+      font-family: "Times New Roman", "STSong", serif;
+    }
+
+    .students-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+      margin-bottom: 1.25rem;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.35rem 0.65rem;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      background: #eef0f3;
+      color: var(--ink);
+      border: 1px solid #dde1e7;
+      transition: background 0.25s, border-color 0.25s, opacity 0.25s;
+    }
+
+    .chip.dim {
+      opacity: 0.35;
+    }
+
+    .chip.on {
+      background: var(--charcoal);
+      color: #fff;
+      border-color: var(--charcoal);
+    }
+
+    .chip .cat {
+      font-size: 0.68rem;
+      opacity: 0.9;
+    }
+
+    .split-card {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(220px, 320px);
+      gap: 0;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 6px 6px 0 var(--shadow);
+      margin-bottom: 1.25rem;
+      min-height: 200px;
+    }
+
+    @media (max-width: 880px) {
+      .split-card {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .split-main {
+      background: var(--slate);
+      color: #fff;
+      padding: 1.15rem 1.25rem;
+    }
+
+    .split-main h2 {
+      margin: 0 0 0.65rem;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .split-main .ctx {
+      font-size: 0.88rem;
+      line-height: 1.55;
+      opacity: 0.95;
+      margin-bottom: 0.85rem;
+    }
+
+    .formula-box {
+      background: var(--paper);
+      color: var(--ink);
+      padding: 0.75rem 1rem;
+      border-radius: 6px;
+      font-size: 0.92rem;
+      line-height: 1.7;
+      box-shadow: inset 0 0 0 1px #e5e7eb;
+    }
+
+    .formula-box .f-label {
+      font-size: 0.72rem;
+      color: #444;
+      margin-bottom: 0.35rem;
+    }
+
+    .formula-box .f-block + .f-block {
+      margin-top: 0.65rem;
+      padding-top: 0.65rem;
+      border-top: 1px solid #e5e7eb;
+    }
+
+    .split-side {
+      background: var(--charcoal);
+      color: #fff;
+      padding: 1rem 1.1rem;
+      font-size: 0.82rem;
+      line-height: 1.55;
+    }
+
+    .split-side h3 {
+      margin: 0 0 0.5rem;
+      font-size: 0.72rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      opacity: 0.75;
+    }
+
+    .split-side dl {
+      margin: 0;
+    }
+
+    .split-side dt {
+      font-weight: 600;
+      margin-top: 0.45rem;
+      font-family: "Times New Roman", "Cambria Math", serif;
+    }
+
+    .split-side dt:first-child {
+      margin-top: 0;
+    }
+
+    .split-side dd {
+      margin: 0.15rem 0 0 0.85rem;
+      opacity: 0.92;
+    }
+
+    .total-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      background: var(--slate);
+      color: #fff;
+      box-shadow: 4px 4px 0 var(--shadow);
+      margin-bottom: 0;
+    }
+
+    .total-bar.dim {
+      opacity: 0.45;
+    }
+
+    .total-bar.on {
+      outline: 2px solid rgba(255, 255, 255, 0.35);
+    }
+
+    .total-bar .nums {
+      font-family: ui-monospace, monospace;
+      font-size: 0.88rem;
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 0.25rem 0.55rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .pill.ok {
+      background: rgba(46, 204, 113, 0.35);
+    }
+
+    .pill.no {
+      background: rgba(231, 76, 60, 0.28);
+    }
+
+    .step-nav {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.65rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .step-nav button {
+      cursor: pointer;
+      font: inherit;
+      padding: 0.45rem 1.1rem;
+      border-radius: 6px;
+      border: 1px solid #cfd2d8;
+      background: #f5f6f8;
+      color: var(--ink);
+      transition: background 0.2s, opacity 0.2s;
+    }
+
+    .step-nav button:hover:not(:disabled) {
+      background: #ebecef;
+    }
+
+    .step-nav button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .step-nav .step-count {
+      font-size: 0.82rem;
+      color: #555;
+      margin-left: 0.25rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="page-head decor">
+      <h1>目標函數 f(x, y, z) 與 SPBO 式迴圈演示</h1>
+      <p class="lead">
+        <strong>x, y, z</strong> 代表三個科目；每位學生 <strong>S₁…Sₙ</strong> 依排名被標記類型，於「科目迴圈 × 學生迴圈」中依類別更新各科數值；一輪結束後計算<strong>各科加總之總分</strong>，若優於舊紀錄則<strong>接受並保存</strong>。
+      </p>
+    </header>
+
+    <div class="step-nav">
+      <button type="button" id="btnPrev" disabled>上一步</button>
+      <button type="button" id="btnNext">下一步</button>
+      <span class="step-count" id="stepCount"></span>
+    </div>
+
+    <div class="h-flow" id="hFlow" aria-label="主流程"></div>
+
+    <div class="subjects-row" id="subjectsRow"></div>
+
+    <div class="students-row" id="studentsRow"></div>
+
+    <div class="split-card" id="splitCard">
+      <div class="split-main">
+        <h2 id="detailTitle"></h2>
+        <p class="ctx" id="detailCtx"></p>
+        <div class="formula-box" id="formulaBox">
+          <div id="formulaInner"></div>
+        </div>
+      </div>
+      <aside class="split-side" id="sidePanel">
+        <h3>變數說明</h3>
+        <dl id="sideDl"></dl>
+      </aside>
+    </div>
+
+    <div class="total-bar dim" id="totalBar">
+      <span class="nums" id="totalNums">舊總分 —　｜　新總分 —　｜　Δ —</span>
+      <span class="pill" id="totalPill">—</span>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const SUBJECTS = [
+        { key: "x", label: "科目 x" },
+        { key: "y", label: "科目 y" },
+        { key: "z", label: "科目 z" },
+      ];
+      const N = 4;
+      const CAT = ["最佳", "優秀", "平均", "隨意"];
+
+      /** @type {{ rank: number, cat: string }[]} */
+      let students = [];
+
+      let scores = {
+        oldTotal: 0,
+        newTotal: 0,
+        improved: false,
+      };
+
+      const hFlow = document.getElementById("hFlow");
+      const subjectsRow = document.getElementById("subjectsRow");
+      const studentsRow = document.getElementById("studentsRow");
+      const detailTitle = document.getElementById("detailTitle");
+      const detailCtx = document.getElementById("detailCtx");
+      const formulaInner = document.getElementById("formulaInner");
+      const sideDl = document.getElementById("sideDl");
+      const totalBar = document.getElementById("totalBar");
+      const totalNums = document.getElementById("totalNums");
+      const totalPill = document.getElementById("totalPill");
+      const btnPrev = document.getElementById("btnPrev");
+      const btnNext = document.getElementById("btnNext");
+      const stepCount = document.getElementById("stepCount");
+
+      const tiles = new Map();
+
+      /** 每輪起始總分（重播與上一步用） */
+      let initScores = { oldTotal: 0, newTotal: 0 };
+
+      /** -1 = 尚未進入正式步驟（僅顯示引導） */
+      let currentPos = -1;
+
+      function esc(s) {
+        return String(s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+      }
+
+      function buildLayout() {
+        hFlow.innerHTML = "";
+        const steps = [
+          { id: "t_fn", tag: "模型", title: "f(x, y, z)", sub: "三個科目變數" },
+          { id: "t_init", tag: "Init", title: "初始化學生", sub: "S₁ … S" + N },
+          { id: "t_rank", tag: "Class", title: "依排名分類", sub: "最佳／優秀／平均／隨意" },
+          { id: "t_loop", tag: "Loop", title: "科目 × 學生", sub: "巢狀迴圈更新" },
+          { id: "t_sum", tag: "Score", title: "總分檢驗", sub: "Σ 科目 → 是否改善" },
+        ];
+        steps.forEach((s, i) => {
+          if (i > 0) {
+            const ar = document.createElement("div");
+            ar.className = "h-arrow";
+            ar.innerHTML =
+              '<svg viewBox="0 0 24 14"><path d="M2 7h16M16 3l4 4-4 4"/></svg>';
+            hFlow.appendChild(ar);
+          }
+          const wrap = document.createElement("div");
+          wrap.className = "h-step";
+          const el = document.createElement("div");
+          el.className = "tile";
+          el.dataset.tileId = s.id;
+          el.innerHTML =
+            '<div class="t-tag">' +
+            esc(s.tag) +
+            "</div>" +
+            '<div class="t-title">' +
+            esc(s.title) +
+            "</div>" +
+            '<div class="t-sub">' +
+            esc(s.sub) +
+            "</div>";
+          wrap.appendChild(el);
+          hFlow.appendChild(wrap);
+          tiles.set(s.id, el);
+        });
+
+        subjectsRow.innerHTML = "";
+        SUBJECTS.forEach((sj) => {
+          const c = document.createElement("div");
+          c.className = "subj-card dim";
+          c.dataset.subj = sj.key;
+          c.innerHTML =
+            '<div class="lab">' +
+            esc(sj.label) +
+            "</div>" +
+            '<div class="sym">' +
+            sj.key +
+            "</div>";
+          subjectsRow.appendChild(c);
+        });
+
+        studentsRow.innerHTML = "";
+        for (let i = 1; i <= N; i++) {
+          const ch = document.createElement("div");
+          ch.className = "chip dim";
+          ch.dataset.student = String(i);
+          ch.innerHTML =
+            '<span>S<sub>' +
+            i +
+            "</sub></span>" +
+            '<span class="cat" data-cat></span>';
+          studentsRow.appendChild(ch);
+        }
+      }
+
+      function resetStudents() {
+        students = [];
+        for (let i = 0; i < N; i++) {
+          students.push({ rank: i, cat: CAT[Math.min(i, CAT.length - 1)] });
+        }
+        students.forEach((st, i) => {
+          const ch = studentsRow.querySelector('.chip[data-student="' + (i + 1) + '"]');
+          if (ch) {
+            const catEl = ch.querySelector("[data-cat]");
+            if (catEl) catEl.textContent = "（" + st.cat + "）";
+          }
+        });
+        const base = 60 + Math.random() * 20;
+        scores.oldTotal = Math.round(base * 10) / 10;
+        scores.newTotal = scores.oldTotal;
+        scores.improved = false;
+        updateTotalDisplay(false);
+      }
+
+      function setTileHighlight(id) {
+        tiles.forEach((el, tid) => {
+          el.classList.toggle("on", tid === id);
+          el.classList.toggle("dim", tid !== id);
+        });
+      }
+
+      function setSubjectHighlight(key) {
+        subjectsRow.querySelectorAll(".subj-card").forEach((c) => {
+          const on = c.dataset.subj === key;
+          c.classList.toggle("on", on);
+          c.classList.toggle("dim", !on);
+        });
+      }
+
+      function clearSubjectHighlight() {
+        subjectsRow.querySelectorAll(".subj-card").forEach((c) => {
+          c.classList.remove("on");
+          c.classList.add("dim");
+        });
+      }
+
+      function setStudentHighlight(idx1) {
+        studentsRow.querySelectorAll(".chip").forEach((ch) => {
+          const i = Number(ch.dataset.student);
+          const on = i === idx1;
+          ch.classList.toggle("on", on);
+          ch.classList.toggle("dim", !on);
+        });
+      }
+
+      function clearStudentHighlight() {
+        studentsRow.querySelectorAll(".chip").forEach((ch) => {
+          ch.classList.remove("on");
+          ch.classList.add("dim");
+        });
+      }
+
+      /**
+       * @returns {{ title: string, ctx: string, html: string, side: [string, string][] }}
+       */
+      function formulaForCategory(cat) {
+        if (cat === "最佳") {
+          return {
+            title: "最好的學生：",
+            ctx:
+              "總分最高的學生；在「每一科」都會持續精進以維持排名，因此投入的努力程度也高於其他人。",
+            html:
+              '<div class="f-block">' +
+              "X<sub>best</sub><sup>new</sup> = X<sub>best</sub> + (−1)<sup>k</sup> × rand × (X<sub>best</sub> − X<sub>j</sub>)" +
+              "</div>",
+            side: [
+              ["<i>k</i>", "1 或 2 的隨機整數"],
+              ["rand", "0～1 的隨機數，代表努力程度"],
+              ["X<sub>j</sub>", "在特定科目中隨機抽取的一位學生"],
+              ["X<sub>best</sub>", "該科目目前最佳生的分數"],
+            ],
+          };
+        }
+        if (cat === "優秀") {
+          return {
+            title: "優秀的學生：",
+            ctx:
+              "對「每一科」都有興趣或天賦；會模仿「最佳生」精進，或因動機而比「平均生」更努力。更新時依規則擇一式（以下兩式為論文中常用之兩種寫法）。",
+            html:
+              '<div class="f-block"><span class="f-label">（一）仿效最佳方向</span>' +
+              "X<sub>new,i</sub> = X<sub>best</sub> + [rand × (X<sub>best</sub> − X<sub>i</sub>)]" +
+              '</div><div class="f-block"><span class="f-label">（二）個人進步 + 最佳影響</span>' +
+              "X<sub>new,i</sub> = X<sub>i</sub> + [rand × (X<sub>best</sub> − X<sub>i</sub>)] + [rand × (X<sub>i</sub> − X<sub>mean</sub>)]" +
+              "</div>",
+            side: [
+              ["X<sub>i</sub>", "該生在該科目下的目前值"],
+              ["X<sub>mean</sub>", "該科目全班平均表現"],
+              ["X<sub>best</sub>", "該科目最佳表現／最佳生對應值"],
+              ["rand", "通常為 0～1 之間的隨機係數"],
+            ],
+          };
+        }
+        if (cat === "平均") {
+          return {
+            title: "平均的學生：",
+            ctx:
+              "對「特定科目」較有興趣者會加強該科；對缺乏興趣的科目，僅維持接近全班平均的努力程度。",
+            html:
+              '<div class="f-block">' +
+              "X<sub>new,i</sub> = X<sub>i</sub> + [rand × (X<sub>mean</sub> − X<sub>i</sub>)]" +
+              "</div>",
+            side: [
+              ["X<sub>new,i</sub>", "該生在該科目更新後的值"],
+              ["X<sub>i</sub>", "更新前該生在該科目的值"],
+              ["rand", "0～1 之間的隨機係數"],
+              ["X<sub>mean</sub>", "該科目全班平均（S₁…S<sub>n</sub>）"],
+            ],
+          };
+        }
+        return {
+          title: "隨意努力的學生：",
+          ctx:
+            "對「任何科目」都缺乏興趣或明顯天賦，但仍會隨機付出努力，試圖拉高總成績。",
+          html:
+            '<div class="f-block">' +
+            "X<sub>new,i</sub> = X<sub>min</sub> + [rand × (X<sub>max</sub> − X<sub>min</sub>)]" +
+            "</div>",
+          side: [
+            ["X<sub>min</sub> / X<sub>max</sub>", "該科目中目前最差與最好的表現（界限）"],
+            ["rand", "0～1 之間的隨機係數"],
+          ],
+        };
+      }
+
+      function renderSpec(spec) {
+        detailTitle.textContent = spec.title;
+        detailCtx.textContent = spec.ctx;
+        formulaInner.innerHTML = spec.html;
+        sideDl.innerHTML = "";
+        spec.side.forEach(([symHtml, desc]) => {
+          const dt = document.createElement("dt");
+          dt.innerHTML = symHtml;
+          const dd = document.createElement("dd");
+          dd.textContent = desc;
+          sideDl.appendChild(dt);
+          sideDl.appendChild(dd);
+        });
+      }
+
+      function updateTotalDisplay(active) {
+        const d = scores.newTotal - scores.oldTotal;
+        totalNums.textContent =
+          "舊總分 " +
+          scores.oldTotal.toFixed(1) +
+          "　｜　新總分 " +
+          scores.newTotal.toFixed(1) +
+          "　｜　Δ " +
+          (d >= 0 ? "+" : "") +
+          d.toFixed(1);
+        totalBar.classList.toggle("on", !!active);
+        totalBar.classList.toggle("dim", !active);
+        if (!active) {
+          totalPill.textContent = "—";
+          totalPill.className = "pill";
+          return;
+        }
+        if (scores.improved) {
+          totalPill.textContent = "改善 · 已紀錄";
+          totalPill.className = "pill ok";
+        } else {
+          totalPill.textContent = "未改善 · 維持舊紀錄";
+          totalPill.className = "pill no";
+        }
+      }
+
+      let queue = [];
+
+      function buildQueue() {
+        const q = [];
+        q.push({ kind: "macro", tile: "t_fn" });
+        q.push({ kind: "macro", tile: "t_init" });
+        q.push({ kind: "macro", tile: "t_rank" });
+        q.push({ kind: "macro", tile: "t_loop" });
+
+        SUBJECTS.forEach((sj) => {
+          for (let si = 1; si <= N; si++) {
+            const st = students[si - 1];
+            q.push({
+              kind: "update",
+              subj: sj.key,
+              subjLabel: sj.label,
+              student: si,
+              cat: st.cat,
+            });
+          }
+        });
+
+        q.push({ kind: "macro", tile: "t_sum" });
+        q.push({ kind: "eval" });
+        q.push({ kind: "done" });
+        return q;
+      }
+
+      function ensureEvalCache(step) {
+        if (step.kind !== "eval") return;
+        if (step.evalCache) return;
+        const jitter = (Math.random() - 0.42) * 8;
+        const newTotal = Math.max(
+          0,
+          Math.round((initScores.oldTotal + jitter) * 10) / 10
+        );
+        const improved = newTotal > initScores.oldTotal + 1e-6;
+        step.evalCache = { newTotal: newTotal, improved: improved };
+      }
+
+      function replayScoresUpTo(targetIndex) {
+        scores.oldTotal = initScores.oldTotal;
+        scores.newTotal = initScores.newTotal;
+        scores.improved = false;
+        for (let j = 0; j <= targetIndex; j++) {
+          if (queue[j].kind === "eval") {
+            ensureEvalCache(queue[j]);
+            const c = queue[j].evalCache;
+            scores.newTotal = c.newTotal;
+            scores.improved = c.improved;
+            /** 畫面上「舊總分」維持本輪初始值，Δ 才有意義 */
+            scores.oldTotal = initScores.oldTotal;
+          }
+        }
+      }
+
+      function macroPlaceholder() {
+        detailTitle.textContent = "流程階段";
+        detailCtx.textContent = "請對照上方橫向流程：初始化 → 分類 → 巢狀迴圈 → 總分檢驗。";
+        formulaInner.innerHTML =
+          "<span style='font-size:0.88rem;color:#333'>進入科目／學生迴圈後，中央區將依學生類別顯示對應說明與公式。</span>";
+        sideDl.innerHTML = "";
+        updateTotalDisplay(false);
+      }
+
+      function renderStepVisual(step) {
+        if (step.kind === "macro") {
+          setTileHighlight(step.tile);
+          clearSubjectHighlight();
+          clearStudentHighlight();
+          macroPlaceholder();
+        } else if (step.kind === "update") {
+          setTileHighlight("t_loop");
+          setSubjectHighlight(step.subj);
+          setStudentHighlight(step.student);
+          const base = formulaForCategory(step.cat);
+          renderSpec({
+            ...base,
+            title:
+              step.subjLabel +
+              " · 學生 S" +
+              step.student +
+              "　" +
+              base.title,
+          });
+        } else if (step.kind === "eval") {
+          setTileHighlight("t_sum");
+          clearSubjectHighlight();
+          clearStudentHighlight();
+          updateTotalDisplay(true);
+          renderSpec({
+            title: "第一輪結束：總分檢驗",
+            ctx:
+              "各科依類別規則更新後，將代表 x、y、z 的分量加總為總分，與上一紀錄比較；若較佳則接受並保存。",
+            html:
+              '<div class="f-block">' +
+              "F<sub>new</sub> = f(x, y, z)（各科分量加總示意），　Δ = F<sub>new</sub> − F<sub>old</sub>" +
+              "</div>",
+            side: [
+              ["F<sub>old</sub>", "上一輪接受後之總分紀錄"],
+              ["F<sub>new</sub>", "本輪更新後重算之總分"],
+              ["判定", "若 Δ &gt; 0 則更新為目前最佳紀錄"],
+            ],
+          });
+        } else if (step.kind === "done") {
+          setTileHighlight("t_sum");
+          clearSubjectHighlight();
+          clearStudentHighlight();
+          detailTitle.textContent = "本輪流程結束";
+          detailCtx.textContent =
+            "可按「下一步」開始新一輪（將重新抽示範總分）。";
+          formulaInner.innerHTML =
+            "<span style='font-size:0.88rem;color:#333'>—</span>";
+          sideDl.innerHTML = "";
+          updateTotalDisplay(true);
+        }
+      }
+
+      function updateNav() {
+        btnPrev.disabled = currentPos <= -1;
+        stepCount.textContent =
+          currentPos < 0
+            ? "尚未開始 · 共 " + queue.length + " 步"
+            : "第 " + (currentPos + 1) + " / " + queue.length + " 步";
+      }
+
+      function goToIndex(i) {
+        if (i < -1) i = -1;
+        if (queue.length === 0) return;
+
+        if (i >= queue.length) {
+          rebuildRound();
+          i = 0;
+        }
+
+        if (i === -1) {
+          currentPos = -1;
+          scores.oldTotal = initScores.oldTotal;
+          scores.newTotal = initScores.newTotal;
+          scores.improved = false;
+          setTileHighlight("t_fn");
+          macroPlaceholder();
+          clearSubjectHighlight();
+          clearStudentHighlight();
+          updateTotalDisplay(false);
+          updateNav();
+          return;
+        }
+
+        replayScoresUpTo(i);
+        renderStepVisual(queue[i]);
+        currentPos = i;
+
+        if (queue[i].kind === "macro") {
+          const el = tiles.get(queue[i].tile);
+          if (el)
+            el.scrollIntoView({
+              behavior: "smooth",
+              inline: "center",
+              block: "nearest",
+            });
+        }
+        updateNav();
+      }
+
+      function rebuildRound() {
+        resetStudents();
+        queue = buildQueue();
+        initScores = {
+          oldTotal: scores.oldTotal,
+          newTotal: scores.newTotal,
+        };
+      }
+
+      buildLayout();
+      rebuildRound();
+      goToIndex(-1);
+
+      btnNext.addEventListener("click", function () {
+        goToIndex(currentPos + 1);
+      });
+      btnPrev.addEventListener("click", function () {
+        goToIndex(currentPos - 1);
+      });
+    })();
+  </script>
+</body>
+</html>
