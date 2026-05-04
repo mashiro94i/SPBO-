@@ -506,6 +506,13 @@
           .replace(/>/g, "&gt;");
       }
 
+      /** 科目鍵 → 公式用大寫字母 */
+      function subjLetter(key) {
+        if (key === "y") return "Y";
+        if (key === "z") return "Z";
+        return "X";
+      }
+
       function buildLayout() {
         hFlow.innerHTML = "";
         const steps = [
@@ -630,9 +637,14 @@
       }
 
       /**
+       * @param {string} cat
+       * @param {string} subjKey 科目 x | y | z（公式字母與之對應）
+       * @param {number} studentNum 內層迴圈學生編號 1…N（取代公式中的 i）
        * @returns {{ title: string, ctx: string, html: string, side: [string, string][] }}
        */
-      function formulaForCategory(cat) {
+      function formulaForCategory(cat, subjKey, studentNum) {
+        const L = subjLetter(subjKey);
+        const sn = String(studentNum);
         if (cat === "最佳") {
           return {
             title: "最好的學生：",
@@ -640,13 +652,21 @@
               "總分最高的學生；在「每一科」都會持續精進以維持排名，因此投入的努力程度也高於其他人。",
             html:
               '<div class="f-block">' +
-              "X<sub>best</sub><sup>new</sup> = X<sub>best</sub> + (−1)<sup>k</sup> × rand × (X<sub>best</sub> − X<sub>j</sub>)" +
+              L +
+              "<sub>best</sub><sup>new</sup> = " +
+              L +
+              "<sub>best</sub> + (−1)<sup>k</sup> × rand × (" +
+              L +
+              "<sub>best</sub> − " +
+              L +
+              "<sub>j</sub>)" +
               "</div>",
             side: [
+              ["<i>i</i>", "內層學生迴圈索引，目前 <i>i</i> = " + sn + "（S<sub>" + sn + "</sub>）"],
               ["<i>k</i>", "1 或 2 的隨機整數"],
               ["rand", "0～1 的隨機數，代表努力程度"],
-              ["X<sub>j</sub>", "在特定科目中隨機抽取的一位學生"],
-              ["X<sub>best</sub>", "該科目目前最佳生的分數"],
+              [L + "<sub>j</sub>", "在特定科目中隨機抽取的一位學生"],
+              [L + "<sub>best</sub>", "該科目目前最佳生的分數"],
             ],
           };
         }
@@ -657,14 +677,47 @@
               "對「每一科」都有興趣或天賦；會模仿「最佳生」精進，或因動機而比「平均生」更努力。更新時依規則擇一式（以下兩式為論文中常用之兩種寫法）。",
             html:
               '<div class="f-block"><span class="f-label">（一）仿效最佳方向</span>' +
-              "X<sub>new,i</sub> = X<sub>best</sub> + [rand × (X<sub>best</sub> − X<sub>i</sub>)]" +
+              L +
+              "<sub>new," +
+              sn +
+              "</sub> = " +
+              L +
+              "<sub>best</sub> + [rand × (" +
+              L +
+              "<sub>best</sub> − " +
+              L +
+              "<sub>" +
+              sn +
+              "</sub>)]" +
               '</div><div class="f-block"><span class="f-label">（二）個人進步 + 最佳影響</span>' +
-              "X<sub>new,i</sub> = X<sub>i</sub> + [rand × (X<sub>best</sub> − X<sub>i</sub>)] + [rand × (X<sub>i</sub> − X<sub>mean</sub>)]" +
+              L +
+              "<sub>new," +
+              sn +
+              "</sub> = " +
+              L +
+              "<sub>" +
+              sn +
+              "</sub> + [rand × (" +
+              L +
+              "<sub>best</sub> − " +
+              L +
+              "<sub>" +
+              sn +
+              "</sub>)] + [rand × (" +
+              L +
+              "<sub>" +
+              sn +
+              "</sub> − " +
+              L +
+              "<sub>mean</sub>)]" +
               "</div>",
             side: [
-              ["X<sub>i</sub>", "該生在該科目下的目前值"],
-              ["X<sub>mean</sub>", "該科目全班平均表現"],
-              ["X<sub>best</sub>", "該科目最佳表現／最佳生對應值"],
+              [
+                L + "<sub>" + sn + "</sub>",
+                "學生 S<sub>" + sn + "</sub> 在該科目下的目前值（內層迴圈 <i>i</i> = " + sn + "）",
+              ],
+              [L + "<sub>mean</sub>", "該科目全班平均表現"],
+              [L + "<sub>best</sub>", "該科目最佳表現／最佳生對應值"],
               ["rand", "通常為 0～1 之間的隨機係數"],
             ],
           };
@@ -676,13 +729,29 @@
               "對「特定科目」較有興趣者會加強該科；對缺乏興趣的科目，僅維持接近全班平均的努力程度。",
             html:
               '<div class="f-block">' +
-              "X<sub>new,i</sub> = X<sub>i</sub> + [rand × (X<sub>mean</sub> − X<sub>i</sub>)]" +
+              L +
+              "<sub>new," +
+              sn +
+              "</sub> = " +
+              L +
+              "<sub>" +
+              sn +
+              "</sub> + [rand × (" +
+              L +
+              "<sub>mean</sub> − " +
+              L +
+              "<sub>" +
+              sn +
+              "</sub>)]" +
               "</div>",
             side: [
-              ["X<sub>new,i</sub>", "該生在該科目更新後的值"],
-              ["X<sub>i</sub>", "更新前該生在該科目的值"],
+              [
+                L + "<sub>new," + sn + "</sub>",
+                "學生 S<sub>" + sn + "</sub> 更新後在該科目的值（<i>i</i> = " + sn + "）",
+              ],
+              [L + "<sub>" + sn + "</sub>", "更新前該生在該科目的值"],
               ["rand", "0～1 之間的隨機係數"],
-              ["X<sub>mean</sub>", "該科目全班平均（S₁…S<sub>n</sub>）"],
+              [L + "<sub>mean</sub>", "該科目全班平均（S₁…S<sub>n</sub>）"],
             ],
           };
         }
@@ -692,11 +761,21 @@
             "對「任何科目」都缺乏興趣或明顯天賦，但仍會隨機付出努力，試圖拉高總成績。",
           html:
             '<div class="f-block">' +
-            "X<sub>new,i</sub> = X<sub>min</sub> + [rand × (X<sub>max</sub> − X<sub>min</sub>)]" +
+            L +
+            "<sub>new," +
+            sn +
+            "</sub> = " +
+            L +
+            "<sub>min</sub> + [rand × (" +
+            L +
+            "<sub>max</sub> − " +
+            L +
+            "<sub>min</sub>)]" +
             "</div>",
           side: [
-            ["X<sub>min</sub> / X<sub>max</sub>", "該科目中目前最差與最好的表現（界限）"],
+            [L + "<sub>min</sub> / " + L + "<sub>max</sub>", "該科目中目前最差與最好的表現（界限）"],
             ["rand", "0～1 之間的隨機係數"],
+            ["<i>i</i>", "內層迴圈目前學生編號 = " + sn],
           ],
         };
       }
@@ -817,7 +896,7 @@
           setTileHighlight("t_loop");
           setSubjectHighlight(step.subj);
           setStudentHighlight(step.student);
-          const base = formulaForCategory(step.cat);
+          const base = formulaForCategory(step.cat, step.subj, step.student);
           renderSpec({
             ...base,
             title:
